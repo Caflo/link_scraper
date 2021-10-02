@@ -46,12 +46,12 @@ def analyze_anchors(url, base_url, result=[], verbose=False, indent_level=0):
                 if next_url.startswith('/'): # keep navigating inside the target's page
                     next_url = base_url + next_url  # rewriting from relative to absolute path to make the curl work at the next recursion
                     if verbose:
-                        print('\t' * indent_level + "|" + next_url)
+                        print("|\t" * indent_level + "" + next_url)
                     result.append(next_url + " - INTERNAL")
                     analyze_anchors(next_url, base_url, result=result, verbose=verbose, indent_level=indent_level+1)
                 else: # TODO for all non-local URLs, only collecting data 
                     if verbose:
-                        print('\t' * indent_level + "|" + next_url)
+                        print("|\t" * indent_level + "" + next_url)
                     result.append(next_url + " - EXTERNAL")
                     continue
         else: # skip anchors with no links
@@ -75,4 +75,8 @@ def link_scrape(url, verbose=False):
   
 if __name__ == "__main__":
 #    test_curl("localhosts")
+    if len(sys.argv) < 2:
+        print("Missing URL")
+        print(f"Usage: {sys.argv[0]} <url>")
+        exit()
     result = link_scrape(sys.argv[1], verbose=True)
