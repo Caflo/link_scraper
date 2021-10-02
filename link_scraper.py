@@ -16,8 +16,8 @@ from urllib.parse import urlparse
 
 def analyze_anchors(url, base_url, result=[], verbose=False, indent_level=0):
     # curl with -L option makes curl following redirection. Useful for sites that redirect you to a landing page
-    # -s option to hide progress 
-    curl_cmd = f"curl -s -L {url}"  #TODO set user agent etc.
+    # -s option to hide progress
+    curl_cmd = f"curl -s -A \"Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0\" -L {url}"  #TODO set user agent etc.
     page = None
 
     # check if curl is successful
