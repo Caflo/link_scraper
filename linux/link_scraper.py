@@ -269,7 +269,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--statistics', dest='statistics', action='store_true', default=False, help='Print also info about elapsed time and other details. Default "false"') 
     parser.add_argument('--line-buffered', dest='line_buffered', action='store_true', default=False, help='Show results as fast as possible. Not recommended to be used in pipe. Default "false"') 
     parser.add_argument('--limit', dest='N', action='store', type=int, default=0, help='Limit results to avoid excessive resource consumption') 
-    parser.add_argument('-f', '--filter', dest='regex', action='store', type=str, default=None, help='Filter based on a given input pattern') 
+    parser.add_argument('-f', '--filter', dest='regex', action='store', type=str, default="", help='Filter based on a given input pattern') 
     parser.add_argument('-i', '--interval', dest='interval', action='store', type=int, default=0, help='Configures interval for curl to avoid making requests too fast. Default 0') 
     parser.add_argument('--no-color', dest='no_color', action='store_true', default=False, help='Disable colored output. Default "false"') 
     args = parser.parse_args()
