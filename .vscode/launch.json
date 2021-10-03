@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
 //            "args": ["--format", "treeview", "https://www.houseofwhiskyscotland.com/", "--line-buffered"],
-            "args": ["--format", "treeview", "http://localhost/", "--line-buffered"],
+            "args": ["--format", "treeview", "http://localhost/example/", "--line-buffered"],
             "console": "integratedTerminal"
         }
     ]

@@ -5,14 +5,12 @@ import json
 import subprocess
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
-from urllib.parse import ParseResult, urlparse
+from urllib.parse import ParseResult, urljoin, urlparse
 from termcolor import colored
 from colorama import init
 
 #TODO Get statistics on how much http and https pages has a specific site
-#TODO Reorganize data logic with urlparse lib
 #TODO fix print on links that start with ./ (replace with CURRENT url, not the base one)
-
 
 init()
 
@@ -35,8 +33,7 @@ class LinkScraper:
 
 
     def analyze_anchors(self, url, indent_level=0):
-        # curl with -L option makes curl following redirection. Useful for sites that redirect you to a landing page
-        # -s option to hide progress
+        # curl with -L option makes curl following redirection
         curl_cmd = f"curl -s -A \"Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0\" -L \"{url}\"" 
         page = None
 
@@ -65,13 +62,16 @@ class LinkScraper:
                     next_url = ParseResult(scheme=self.root_url.scheme, netloc=self.root_url.netloc, path=next_url.path, \
                                                                             params=next_url.params, query=next_url.query, \
                                                                                                 fragment=next_url.fragment)
+                if next_url.path.startswith("./"):
+                    parent = url[:url.rfind('/')]
+                    abs_path = parent + next_url.path[1:]
+                    next_url = urlparse(abs_path)
+
                 if next_url in self.links: # skip duplicate links
                     continue
                 else:
                     self.links.append(next_url) 
-#                    if next_url.startswith('/') or next_url.startswith(self.root_url): # keep navigating inside the target's page
                     if next_url.netloc == self.root_url.netloc:
-#                        next_url = self.root_url + next_url # rewriting from relative to absolute path to make the curl work at the next recursion
                         self.n_internal_links += 1
                         self.tree_view += "|\t" * indent_level + "" + colored(next_url.geturl() + "\n", 'green')
                         if self.line_buffered:
