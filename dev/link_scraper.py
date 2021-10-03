@@ -23,7 +23,7 @@ class UrlColors(Enum):
 
 class LinkScraper:
 
-    def __init__(self, root_url, format='treeview', line_buffered=False) -> None:
+    def __init__(self, root_url, format='treeview', line_buffered=False, limit=0) -> None:
 
         if not root_url.startswith("http"):
             raise ValueError("Wrong URL format. Must be starting with \"http[s]://\"")
@@ -39,6 +39,8 @@ class LinkScraper:
 
         self.format = format
         self.line_buffered = line_buffered
+        self.limit = limit
+        self.iterations = 0
 
 
     def assoc_url_color(self, url):
@@ -57,6 +59,7 @@ class LinkScraper:
 
     def analyze_anchors(self, url, indent_level=0):
         # curl with -L option makes curl following redirection
+
         curl_cmd = f"curl -s -A \"Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0\" -L \"{url}\"" 
         page = None
 
@@ -77,6 +80,10 @@ class LinkScraper:
         if not anchors: # base case of recursion, end
             return
         for anchor in anchors:
+            if self.limit != 0 and self.iterations == self.limit:
+                return
+
+
             if anchor.has_attr('href'):
                 next_url = anchor.attrs['href'] # extract url
                 next_url = urlparse(next_url)
@@ -94,6 +101,7 @@ class LinkScraper:
                     continue
                 else:
                     self.links.append(next_url) 
+                    self.iterations += 1
                     url_color = self.assoc_url_color(next_url)
                     if next_url.netloc == self.root_url.netloc:
                         self.statistics['n_internal_links'] += 1
@@ -204,12 +212,14 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--format', dest='format', choices=['treeview', 'grepable'], default='treeview', help='Choose how to print all the links (option grepable is useful is the script is used in pipe). Default "treeview"') 
     parser.add_argument('-s', '--statistics', dest='statistics', action='store_true', default=False, help='Print also info about elapsed time and other details. Default "false"') 
     parser.add_argument('--line-buffered', dest='line_buffered', action='store_true', default=False, help='Show results as fast as possible. Not recommended to be used in pipe. Default "false"') 
+    parser.add_argument('--limit', dest='N', action='store', type=int, default=0, help='Limit results to avoid excessive resource consumption') 
     args = parser.parse_args()
 
     starting_url = args.url
     format = args.format
     line_buffered = args.line_buffered
     statistics = args.statistics
+    limit = args.N
 
-    link_scraper = LinkScraper(starting_url, format=format, line_buffered=line_buffered) 
+    link_scraper = LinkScraper(starting_url, format=format, line_buffered=line_buffered, limit=limit) 
     link_scraper.print_data(starting_url, statistics=statistics)
