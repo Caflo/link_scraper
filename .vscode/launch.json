@@ -10,7 +10,6 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "args": ["http://localhost"],
             "console": "integratedTerminal"
         }
     ]

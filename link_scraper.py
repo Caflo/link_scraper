@@ -37,7 +37,7 @@ class LinkScraper:
 
         # check if curl is successful
         try:
-            page = subprocess.check_output(curl_cmd, encoding="437")
+            page = subprocess.check_output(curl_cmd, shell=True, encoding="437")
         except subprocess.CalledProcessError as e:
             print(e.output)
             if e.output.startswith('error: {'):
