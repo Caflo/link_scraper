@@ -6,7 +6,10 @@ import subprocess
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
 from urllib.parse import urlparse
+from termcolor import colored
+from colorama import init
 
+init()
 
 class LinkScraper:
 
@@ -58,24 +61,24 @@ class LinkScraper:
                     if next_url.startswith('/'): # keep navigating inside the target's page
                         next_url = self.root_url + next_url # rewriting from relative to absolute path to make the curl work at the next recursion
                         self.n_internal_links += 1
-                        self.tree_view += "|\t" * indent_level + "" + next_url + "\n"
+                        self.tree_view += "|\t" * indent_level + "" + colored(next_url + "\n", 'green')
                         if self.line_buffered:
                             if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + next_url)
+                                print("|\t" * indent_level + "" + colored(next_url, 'green'))
                             else:
-                                print(next_url)
+                                print(colored(next_url, 'green'))
                         self.analyze_anchors(next_url, indent_level=indent_level+1)
                     else: 
                         self.n_external_links += 1
-                        self.tree_view += "|\t" * indent_level + "" + next_url + "\n"
+                        self.tree_view += colored("|\t" * indent_level + "" + next_url + "\n", 'white')
                         if self.line_buffered:
                             if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + next_url)
+                                print("|\t" * indent_level + "" + colored(next_url, 'white'))
                             else:
-                                print(next_url)
+                                print(colored(next_url, 'white'))
                         continue
-            else: # skip anchors with no links
-                continue
+#            else: # skip anchors with no links
+#                continue
 
 
     def collect_link_statistics(self, url, statistics=False):
@@ -90,6 +93,9 @@ class LinkScraper:
         self.statistics['end_time'] = time_after
         self.statistics['exec_time'] = timer_stop - timer_start
         total_links = self.n_internal_links + self.n_external_links
+        if total_links == 0:
+            print("No statistics was possible because no link was found. Exiting")
+            return
         self.statistics['int_links_perc'] = self.n_internal_links / total_links
         self.statistics['ext_links_perc'] = self.n_external_links / total_links
         if statistics:
@@ -116,7 +122,7 @@ if __name__ == "__main__":
     parser.add_argument('url', metavar='URL', type=str, help='Root url from where to start scraping') 
     parser.add_argument('-v', '--verbosity', action='store', dest='N', nargs='?', default=0, help='Configures the verbosity. 0 to be quiet, 1 for a standard verbosity, 2 for a more detailed verbosity. Default 0') 
     parser.add_argument('-f', '--format', dest='format', choices=['treeview', 'grepable'], default='treeview', help='Choose how to print all the links (option grepable is useful is the script is used in pipe). Default "treeview"') 
-    parser.add_argument('-s', '--statistics', dest='statistics', action='store_true', default=False, help='Print info about elapsed time and other details. Default "false"') 
+    parser.add_argument('-s', '--statistics', dest='statistics', action='store_true', default=False, help='Print also info about elapsed time and other details. Default "false"') 
     parser.add_argument('--line-buffered', dest='line_buffered', action='store_true', default=False, help='Show results as fast as possible. Not recommended to be used in pipe. Default "false"') 
     args = parser.parse_args()
 
