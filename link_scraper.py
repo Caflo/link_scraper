@@ -115,7 +115,7 @@ class LinkScraper:
                 continue
 
 
-    def collect_link_statistics(self, url):
+    def collect_link_statistics(self, url, stdout=True, statistics=False):
         
         time_before = datetime.now().strftime('%H:%M:%S')
         timer_start = timeit.default_timer()
@@ -129,16 +129,16 @@ class LinkScraper:
         total_links = self.n_internal_links + self.n_external_links
         self.statistics['int_links_perc'] = self.n_internal_links / total_links
         self.statistics['ext_links_perc'] = self.n_external_links / total_links
-        if stdout:
+        if stdout and statistics:
             print(f"Start time: {self.statistics['start_time']}\tEnd time: {self.statistics['end_time']}")
             print(f"Execution time: {self.statistics['exec_time']} seconds")
             print(f"Percent internal links: {self.statistics['int_links_perc']:.2%}")
             print(f"Percent external links: {self.statistics['ext_links_perc']:.2%}")
 
 
-    def scrape(self, url, format='treeview', stdout=True):
+    def scrape(self, url, format='treeview', stdout=True, statistics=False):
 
-        self.collect_link_statistics(url)
+        self.collect_link_statistics(url, stdout=stdout, statistics=statistics)
 
         if format == 'treeview':
             print(self.tree_view) 
@@ -153,6 +153,7 @@ if __name__ == "__main__":
     parser.add_argument('url', metavar='URL', type=str, help='Root url from where to start scraping') 
     parser.add_argument('-v', '--verbosity', action='store', dest='N', nargs='?', default=0, help='Configures the verbosity. 0 to be quiet, 1 for a standard verbosity, 2 for a more detailed verbosity. Default 0') 
     parser.add_argument('-f', '--format', dest='format', choices=['treeview', 'grepable'], default='treeview', help='Choose how to print all the links (grepable is useful is the script is used in pipe). Default "treeview"') 
+    parser.add_argument('-s', '--statistics', dest='statistics', action='store_true', default=False, help='Print info about elapsed time and other details. Default "false"') 
     parser.add_argument('--no-stdout', dest='no_stdout', action='store_true', default=False, help='Do not print results on stdout if true. Default "false"') 
     args = parser.parse_args()
 
@@ -161,6 +162,7 @@ if __name__ == "__main__":
     stdout = True
     if (args.no_stdout):
         stdout = False
+    statistics = args.statistics
     
     link_scraper = LinkScraper(starting_url) 
-    link_scraper.scrape(starting_url, format=format, stdout=stdout)
+    link_scraper.scrape(starting_url, format=format, stdout=stdout, statistics=statistics)
