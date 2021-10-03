@@ -5,9 +5,14 @@ import json
 import subprocess
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse
 from termcolor import colored
 from colorama import init
+
+#TODO Get statistics on how much http and https pages has a specific site
+#TODO Reorganize data logic with urlparse lib
+#TODO fix print on links that start with ./ (replace with CURRENT url, not the base one)
+
 
 init()
 
@@ -18,7 +23,7 @@ class LinkScraper:
         if not root_url.startswith("http"):
             raise ValueError("Wrong URL format. Must be starting with \"http[s]://\"")
 
-        self.root_url = root_url
+        self.root_url = urlparse(root_url)
         self.links = []
         self.tree_view = ""
         self.n_internal_links = 0
@@ -32,7 +37,7 @@ class LinkScraper:
     def analyze_anchors(self, url, indent_level=0):
         # curl with -L option makes curl following redirection. Useful for sites that redirect you to a landing page
         # -s option to hide progress
-        curl_cmd = f"curl -s -A \"Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0\" -L {url}" 
+        curl_cmd = f"curl -s -A \"Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0\" -L \"{url}\"" 
         page = None
 
         # check if curl is successful
@@ -53,29 +58,36 @@ class LinkScraper:
             return
         for anchor in anchors:
             if anchor.has_attr('href'):
-                next_url = anchor.attrs['href']
+                next_url = anchor.attrs['href'] # extract url
+                next_url = urlparse(next_url)
+                if not next_url.scheme: # if link has a relative local path, complete with the given scheme and domain name
+                    # domain name is also needed because otherwise urlparse won't recognize it
+                    next_url = ParseResult(scheme=self.root_url.scheme, netloc=self.root_url.netloc, path=next_url.path, \
+                                                                            params=next_url.params, query=next_url.query, \
+                                                                                                fragment=next_url.fragment)
                 if next_url in self.links: # skip duplicate links
                     continue
                 else:
                     self.links.append(next_url) 
-                    if next_url.startswith('/'): # keep navigating inside the target's page
-                        next_url = self.root_url + next_url # rewriting from relative to absolute path to make the curl work at the next recursion
+#                    if next_url.startswith('/') or next_url.startswith(self.root_url): # keep navigating inside the target's page
+                    if next_url.netloc == self.root_url.netloc:
+#                        next_url = self.root_url + next_url # rewriting from relative to absolute path to make the curl work at the next recursion
                         self.n_internal_links += 1
-                        self.tree_view += "|\t" * indent_level + "" + colored(next_url + "\n", 'green')
+                        self.tree_view += "|\t" * indent_level + "" + colored(next_url.geturl() + "\n", 'green')
                         if self.line_buffered:
                             if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + colored(next_url, 'green'))
+                                print("|\t" * indent_level + "" + colored(next_url.geturl(), 'green'))
                             else:
-                                print(colored(next_url, 'green'))
-                        self.analyze_anchors(next_url, indent_level=indent_level+1)
+                                print(colored(next_url.geturl(), 'green'))
+                        self.analyze_anchors(next_url.geturl(), indent_level=indent_level+1)
                     else: 
                         self.n_external_links += 1
-                        self.tree_view += colored("|\t" * indent_level + "" + next_url + "\n", 'white')
+                        self.tree_view += colored("|\t" * indent_level + "" + next_url.geturl() + "\n", 'white')
                         if self.line_buffered:
                             if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + colored(next_url, 'white'))
+                                print("|\t" * indent_level + "" + colored(next_url.geturl(), 'white'))
                             else:
-                                print(colored(next_url, 'white'))
+                                print(colored(next_url.geturl(), 'white'))
                         continue
 #            else: # skip anchors with no links
 #                continue
