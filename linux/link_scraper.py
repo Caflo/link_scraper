@@ -15,7 +15,7 @@ import numpy as np
 import re
 
 # TODO Add possibility to insert more than one domain, in case the site has multiple domains
-# TODO Add statistics to check broken links by looking at the response code
+# TODO Add statistics to check broken links by looking at the response code or forbidden ones (40X)
 
 init(autoreset=True)
 
@@ -69,6 +69,10 @@ class LinkScraper:
         self.statistics['n_external_links'] = 0
         self.statistics['n_https'] = 0
         self.statistics['n_http'] = 0
+        self.statistics['good_links'] = 0
+        self.statistics['broken_links'] = 0
+        self.statistics['forbidden_links'] = 0
+        self.statistics['server_errors'] = 0
 
         self.mode = mode
         self.line_buffered = line_buffered
@@ -107,7 +111,8 @@ class LinkScraper:
     def analyze_anchors(self, url, indent_level=0):
         # curl with -L option makes curl following redirection
 
-        curl_cmd = f"curl -s -A \"Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0\" -L \"{url}\"" 
+#        curl_cmd = f"curl -s -A \"Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0\" -L \"{url}\"" 
+        curl_cmd = "curl -Ls -w %{http_code} -A \"Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0\" \"" + url + "\""
         page = None
 
 
@@ -124,6 +129,18 @@ class LinkScraper:
 
         time.sleep(self.interval)
 
+        # switch response code
+        http_code = int(page[-3:])
+        if http_code >= 200 and http_code < 400:
+            self.statistics['good_links'] += 1
+        if http_code == 400 or http_code == 404:
+            self.statistics['broken_links'] += 1
+        elif http_code == 401 or http_code == 403:
+            self.statistics['forbidden_links'] += 1
+        elif http_code == 500 or http_code == 502 or http_code == 503 or http_code == 504: 
+            self.statistics['server_errors'] += 1
+
+
         # scraping page
         soup = BeautifulSoup(page, features="html.parser")
         anchors = soup.findAll('a')
@@ -137,11 +154,6 @@ class LinkScraper:
             if anchor.has_attr('href'):
                 next_url = anchor.attrs['href'] # extract url
                 next_url = urlparse(next_url)
-#                if not next_url.scheme: # if link has a relative local path, complete with the given scheme and domain name
-#                    # domain name is also needed because otherwise urlparse won't recognize it
-#                    next_url = ParseResult(scheme=self.root_url.scheme, netloc=self.root_url.netloc, path=next_url.path, \
-#                                                                            params=next_url.params, query=next_url.query, \
-#                                                                                                fragment=next_url.fragment)
 
                 if next_url.path.startswith("./"):
                     parent = url[:url.rfind('/')]
@@ -234,16 +246,16 @@ class LinkScraper:
             for link in self.links:
                 print(self.assoc_url_color(link) + link.geturl())
         
-        c1 = np.array([self.statistics['n_https'], self.statistics['n_http']])
-        c1 = [value for value in c1 if value!=0]
-        c1_labels = []
-        if (self.statistics['n_https'] > 0):
-            c1_labels.append('https')
-        if (self.statistics['n_http'] > 0):
-            c1_labels.append('http')
-
 
         if statistics:
+            c1 = np.array([self.statistics['n_https'], self.statistics['n_http']])
+            c1 = [value for value in c1 if value!=0]
+            c1_labels = []
+            if (self.statistics['n_https'] > 0):
+                c1_labels.append('https')
+            if (self.statistics['n_http'] > 0):
+                c1_labels.append('http')
+
             c2 = np.array([self.statistics['n_internal_links'], self.statistics['n_external_links']])
             c2 = [value for value in c2 if value!=0]
             c2_labels = []
@@ -252,15 +264,27 @@ class LinkScraper:
             if (self.statistics['n_external_links'] > 0):
                 c2_labels.append('external links')
 
-            fig, axes = plt.subplots(1, 2)
+            c3 = np.array([self.statistics['good_links'], self.statistics['broken_links'], \
+                                                            self.statistics['forbidden_links'], self.statistics['server_errors']])
+            c3 = [value for value in c3 if value!=0]
+            c3_labels = []
+            if (self.statistics['good_links'] > 0):
+                c3_labels.append('good links')
+            if (self.statistics['broken_links'] > 0):
+                c3_labels.append('broken links')
+            if (self.statistics['forbidden_links'] > 0):
+                c3_labels.append('forbidden links')
+            if (self.statistics['server_errors'] > 0):
+                c3_labels.append('Internal server errors')
+
+
+            fig, axes = plt.subplots(1, 3)
 
             p1 = axes[0].pie(c1, startangle=90, autopct='%1.1f%%')
-            axes[0].legend(loc='lower left')
             axes[0].set_title('HTTP/HTTPS links')
             axes[0].legend(loc='best', labels=c1_labels)
 
             p2 = axes[1].pie(c2, startangle=90, autopct='%1.1f%%')
-            axes[1].legend(loc='lower right')
             axes[1].set_title('Internal/external links')
             axes[1].legend(loc='best', labels=c2_labels)
 
@@ -268,6 +292,11 @@ class LinkScraper:
             centre_circle = plt.Circle((0,0),0.70,fc='white')
             fig = plt.gcf()
             fig.gca().add_artist(centre_circle)
+
+            p3 = axes[2].pie(c3, startangle=90, autopct='%1.1f%%')
+            axes[2].set_title('HTTP response codes')
+            axes[2].legend(loc='best', labels=c3_labels)
+
 
             plt.tight_layout()
             plt.title('Link statistics')
