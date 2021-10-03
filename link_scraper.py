@@ -8,11 +8,16 @@ from urllib.request import urlopen
 from urllib.parse import ParseResult, urljoin, urlparse
 from termcolor import colored
 from colorama import init
+from enum import Enum
 
-#TODO Get statistics on how much http and https pages has a specific site
-#TODO fix print on links that start with ./ (replace with CURRENT url, not the base one)
+#TODO Add possibility to insert more than one domain, in case the site has multiple domains
 
 init()
+
+class UrlColors(Enum):
+    URL_SECURE = 'green'
+    URL_INSECURE = 'yellow'
+    URL_EXTERNAL = 'white'
 
 class LinkScraper:
 
@@ -24,12 +29,28 @@ class LinkScraper:
         self.root_url = urlparse(root_url)
         self.links = []
         self.tree_view = ""
-        self.n_internal_links = 0
-        self.n_external_links = 0
         self.statistics = dict()
+        self.statistics['n_internal_links'] = 0
+        self.statistics['n_external_links'] = 0
+        self.statistics['n_https'] = 0
+        self.statistics['n_http'] = 0
 
         self.format = format
         self.line_buffered = line_buffered
+
+
+    def assoc_url_color(self, url):
+        if url.netloc == self.root_url.netloc:
+            if url.scheme == 'https':
+                self.statistics['n_https'] += 1
+                return UrlColors.URL_SECURE.value
+            elif url.scheme == 'http':
+                self.statistics['n_http'] += 1
+                return UrlColors.URL_INSECURE.value
+        else:
+            # don't care about insecure external links
+            return UrlColors.URL_EXTERNAL.value
+        
 
 
     def analyze_anchors(self, url, indent_level=0):
@@ -71,26 +92,25 @@ class LinkScraper:
                     continue
                 else:
                     self.links.append(next_url) 
+                    url_color = self.assoc_url_color(next_url)
                     if next_url.netloc == self.root_url.netloc:
-                        self.n_internal_links += 1
-                        self.tree_view += "|\t" * indent_level + "" + colored(next_url.geturl() + "\n", 'green')
+                        self.statistics['n_internal_links'] += 1
+                        self.tree_view += "|\t" * indent_level + "" + colored(next_url.geturl() + "\n", url_color)
                         if self.line_buffered:
                             if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + colored(next_url.geturl(), 'green'))
+                                print("|\t" * indent_level + "" + colored(next_url.geturl(), url_color))
                             else:
-                                print(colored(next_url.geturl(), 'green'))
+                                print(colored(next_url.geturl(), url_color))
                         self.analyze_anchors(next_url.geturl(), indent_level=indent_level+1)
                     else: 
-                        self.n_external_links += 1
-                        self.tree_view += colored("|\t" * indent_level + "" + next_url.geturl() + "\n", 'white')
+                        self.statistics['n_external_links'] += 1
+                        self.tree_view += colored("|\t" * indent_level + "" + next_url.geturl() + "\n", url_color)
                         if self.line_buffered:
                             if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + colored(next_url.geturl(), 'white'))
+                                print("|\t" * indent_level + "" + colored(next_url.geturl(), url_color))
                             else:
-                                print(colored(next_url.geturl(), 'white'))
+                                print(colored(next_url.geturl(), url_color))
                         continue
-#            else: # skip anchors with no links
-#                continue
 
 
     def collect_link_statistics(self, url, statistics=False):
@@ -104,17 +124,26 @@ class LinkScraper:
         self.statistics['start_time'] = time_before
         self.statistics['end_time'] = time_after
         self.statistics['exec_time'] = timer_stop - timer_start
-        total_links = self.n_internal_links + self.n_external_links
+        total_links = self.statistics['n_internal_links'] + self.statistics['n_external_links']
         if total_links == 0:
             print("No statistics was possible because no link was found. Exiting")
             return
-        self.statistics['int_links_perc'] = self.n_internal_links / total_links
-        self.statistics['ext_links_perc'] = self.n_external_links / total_links
+        
+        if self.statistics['n_internal_links'] > 0 and self.statistics['n_external_links'] > 0:
+            self.statistics['int_links_perc'] = self.statistics['n_internal_links'] / total_links
+            self.statistics['ext_links_perc'] = self.statistics['n_external_links'] / total_links
         if statistics:
             print(f"Start time: {self.statistics['start_time']}\tEnd time: {self.statistics['end_time']}")
             print(f"Execution time: {self.statistics['exec_time']} seconds")
-            print(f"Percent internal links: {self.statistics['int_links_perc']:.2%}")
-            print(f"Percent external links: {self.statistics['ext_links_perc']:.2%}")
+            if self.statistics['n_internal_links'] > 0 and self.statistics['n_external_links'] > 0:
+                print(f"% internal links: {self.statistics['int_links_perc']:.2%}")
+                print(f"% external links: {self.statistics['ext_links_perc']:.2%}")
+
+            print(f"{self.statistics['n_https']} internal links are secure") 
+            if self.statistics['n_http'] > 0:
+                print(colored(f"{self.statistics['n_http']} internal links are not secure", UrlColors.URL_INSECURE.value)) 
+            else:
+                print(colored(f"No HTTP link was found", UrlColors.URL_SECURE.value)) 
 
 
     def print_data(self, url, statistics=False):
