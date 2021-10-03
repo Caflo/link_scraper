@@ -15,7 +15,6 @@ import numpy as np
 import re
 
 # TODO Add possibility to insert more than one domain, in case the site has multiple domains
-# TODO Add statistics to check broken links by looking at the response code or forbidden ones (40X)
 
 init(autoreset=True)
 
@@ -81,8 +80,6 @@ class LinkScraper:
         self.interval = interval
         self.regex = regex
         self.no_color = no_color
-
-        self.previous_url = "" # used as shared variable in recursion
 
 
     def assoc_url_color(self, url):
@@ -223,17 +220,17 @@ class LinkScraper:
                 print(f"% internal links: {self.statistics['int_links_perc']:.2%}")
                 print(f"% external links: {self.statistics['ext_links_perc']:.2%}")
 
-            print(f"{self.statistics['n_https']} internal links are secure") 
+            print(f"{self.statistics['n_https']} internal links are secured under HTTPS") 
             if self.statistics['n_http'] > 0:
                 if self.no_color:
-                    print(f"{self.statistics['n_http']} internal links are not secure") 
+                    print(f"{self.statistics['n_http']} internal links are not secured under HTTPS") 
                 else:
-                    print(colors.fg.orange + f"{self.statistics['n_http']} internal links are not secure") 
-            else:
-                if self.no_color:
-                    print(f"No HTTP link was found") 
-                else:
-                    print(colors.fg.lightgreen + f"No HTTP link was found")
+                    print(colors.fg.orange + f"{self.statistics['n_http']} internal links are not secured under HTTPS") 
+#            else:
+#                if self.no_color:
+#                    print(f"No HTTP link was found") 
+#                else:
+#                    print(colors.fg.lightgreen + f"No HTTP link was found")
 
 
     def print_data(self, url, statistics=False):
@@ -278,11 +275,18 @@ class LinkScraper:
                 c3_labels.append('Internal server errors')
 
 
-            fig, axes = plt.subplots(1, 3)
+            fig, axes = plt.subplots(1, 3, figsize=(10, 5))
 
-            p1 = axes[0].pie(c1, startangle=90, autopct='%1.1f%%')
-            axes[0].set_title('HTTP/HTTPS links')
-            axes[0].legend(loc='best', labels=c1_labels)
+            if self.statistics['n_https'] != 0 or self.statistics['n_http'] != 0:
+                p1 = axes[0].pie(c1, startangle=90, autopct='%1.1f%%')
+                axes[0].set_title('Internal HTTP/HTTPS links')
+                axes[0].legend(loc='best', labels=c1_labels)
+            else:
+#                axes[0].set_visible(False)
+                p1 = axes[0].pie([0], startangle=90)
+                axes[0].text(0.1, 0.5, 'No stat available for this chart', horizontalalignment='center', verticalalignment='center', transform=axes[0].transAxes)
+
+
 
             p2 = axes[1].pie(c2, startangle=90, autopct='%1.1f%%')
             axes[1].set_title('Internal/external links')
@@ -299,7 +303,6 @@ class LinkScraper:
 
 
             plt.tight_layout()
-            plt.title('Link statistics')
             plt.show()
 
 

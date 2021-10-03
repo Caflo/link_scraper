@@ -9,8 +9,8 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-//            "args": ["--mode", "grepable", "--line-buffered", "http://localhost/"],
-            "args": ["--mode", "grepable", "--line-buffered", "http://books.toscrape.com/"],
+            "args": ["--mode", "grepable", "--line-buffered", "http://localhost/", "--filter", "https", "--statistics"]
+//            "args": ["--mode", "grepable", "--line-buffered", "http://books.toscrape.com/"],
             "console": "integratedTerminal"
         }
     ]
