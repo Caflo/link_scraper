@@ -1,5 +1,6 @@
 import argparse
 import timeit
+import time
 from datetime import datetime
 import json
 import subprocess
@@ -53,7 +54,7 @@ class colors:
 
 class LinkScraper:
 
-    def __init__(self, root_url, format='treeview', line_buffered=False, limit=0, no_color=False) -> None:
+    def __init__(self, root_url, format='treeview', line_buffered=False, limit=0, no_color=False, interval=0) -> None:
 
         if not root_url.startswith("http"):
             raise ValueError("Wrong URL format. Must be starting with \"http[s]://\"")
@@ -71,6 +72,7 @@ class LinkScraper:
         self.line_buffered = line_buffered
         self.limit = limit
         self.iterations = 0
+        self.interval = interval
         self.no_color = no_color
 
 
@@ -103,6 +105,7 @@ class LinkScraper:
         curl_cmd = f"curl -s -A \"Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0\" -L \"{url}\"" 
         page = None
 
+
         # check if curl is successful
         try:
             page = subprocess.check_output(curl_cmd, shell=True, encoding="437")
@@ -113,6 +116,8 @@ class LinkScraper:
                 print(error['code'])
                 print(error['message'])
                 return
+
+        time.sleep(self.interval)
 
         # scraping page
         soup = BeautifulSoup(page, features="html.parser")
@@ -259,6 +264,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--statistics', dest='statistics', action='store_true', default=False, help='Print also info about elapsed time and other details. Default "false"') 
     parser.add_argument('--line-buffered', dest='line_buffered', action='store_true', default=False, help='Show results as fast as possible. Not recommended to be used in pipe. Default "false"') 
     parser.add_argument('--limit', dest='N', action='store', type=int, default=0, help='Limit results to avoid excessive resource consumption') 
+    parser.add_argument('-i', '--interval', dest='interval', action='store', type=int, default=0, help='Configures interval for curl to avoid making requests too fast. Default 0') 
     parser.add_argument('--no-color', dest='no_color', action='store_true', default=False, help='Disable colored output. Default "false"') 
     args = parser.parse_args()
 
@@ -267,7 +273,8 @@ if __name__ == "__main__":
     line_buffered = args.line_buffered
     statistics = args.statistics
     limit = args.N
+    interval = args.interval
     no_color = args.no_color
 
-    link_scraper = LinkScraper(starting_url, format=format, line_buffered=line_buffered, limit=limit, no_color=no_color) 
+    link_scraper = LinkScraper(starting_url, format=format, line_buffered=line_buffered, limit=limit, no_color=no_color, interval=interval) 
     link_scraper.print_data(starting_url, statistics=statistics)
