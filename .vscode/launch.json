@@ -9,7 +9,7 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "args": ["-f", "grepable", "--line-buffered", "--limit", "10", "http://localhost"],
+            "args": ["--format", "treeview", "--line-buffered", "http://localhost/example", "--statistics", "--no-color"],
             "console": "integratedTerminal"
         }
     ]

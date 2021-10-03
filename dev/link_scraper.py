@@ -14,16 +14,46 @@ import numpy as np
 
 # TODO Add possibility to insert more than one domain, in case the site has multiple domains
 
-init()
+init(autoreset=True)
 
-class UrlColors(Enum):
-    URL_SECURE = 'green'
-    URL_INSECURE = 'yellow'
-    URL_EXTERNAL = 'white'
+class colors:
+    reset='\033[0m'
+    bold='\033[01m'
+    disable='\033[02m'
+    underline='\033[04m'
+    reverse='\033[07m'
+    strikethrough='\033[09m'
+    invisible='\033[08m'
+    class fg:
+        black='\033[30m'
+        red='\033[31m'
+        green='\033[32m'
+        orange='\033[33m'
+        blue='\033[34m'
+        purple='\033[35m'
+        cyan='\033[36m'
+        lightgrey='\033[37m'
+        darkgrey='\033[90m'
+        lightred='\033[91m'
+        lightgreen='\033[92m'
+        yellow='\033[93m'
+        lightblue='\033[94m'
+        pink='\033[95m'
+        lightcyan='\033[96m'
+    class bg:
+        black='\033[40m'
+        red='\033[41m'
+        green='\033[42m'
+        orange='\033[43m'
+        blue='\033[44m'
+        purple='\033[45m'
+        cyan='\033[46m'
+        lightgrey='\033[47m'
+
 
 class LinkScraper:
 
-    def __init__(self, root_url, format='treeview', line_buffered=False, limit=0) -> None:
+    def __init__(self, root_url, format='treeview', line_buffered=False, limit=0, no_color=False) -> None:
 
         if not root_url.startswith("http"):
             raise ValueError("Wrong URL format. Must be starting with \"http[s]://\"")
@@ -41,19 +71,29 @@ class LinkScraper:
         self.line_buffered = line_buffered
         self.limit = limit
         self.iterations = 0
+        self.no_color = no_color
 
 
     def assoc_url_color(self, url):
         if url.netloc == self.root_url.netloc:
             if url.scheme == 'https':
                 self.statistics['n_https'] += 1
-                return UrlColors.URL_SECURE.value
+                if self.no_color:
+                    return ""
+                else:
+                    return colors.fg.lightgreen
             elif url.scheme == 'http':
                 self.statistics['n_http'] += 1
-                return UrlColors.URL_INSECURE.value
+                if self.no_color:
+                    return ""
+                else:
+                    return colors.fg.yellow
         else:
             # don't care about insecure external links
-            return UrlColors.URL_EXTERNAL.value
+            if self.no_color:
+                return ""
+            else:
+                return colors.fg.lightgrey
         
 
 
@@ -102,24 +142,24 @@ class LinkScraper:
                 else:
                     self.links.append(next_url) 
                     self.iterations += 1
-                    url_color = self.assoc_url_color(next_url)
+                    url_colored_text = self.assoc_url_color(next_url)
                     if next_url.netloc == self.root_url.netloc:
                         self.statistics['n_internal_links'] += 1
-                        self.tree_view += "|\t" * indent_level + "" + colored(next_url.geturl() + "\n", url_color)
+                        self.tree_view += "|\t" * indent_level + "" + url_colored_text + next_url.geturl() + "\n"
                         if self.line_buffered:
                             if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + colored(next_url.geturl(), url_color))
+                                print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
                             else:
-                                print(colored(next_url.geturl(), url_color))
+                                print(url_colored_text + next_url.geturl())
                         self.analyze_anchors(next_url.geturl(), indent_level=indent_level+1)
                     else: 
                         self.statistics['n_external_links'] += 1
-                        self.tree_view += colored("|\t" * indent_level + "" + next_url.geturl() + "\n", url_color)
+                        self.tree_view += "|\t" * indent_level + "" + url_colored_text + next_url.geturl() + "\n"
                         if self.line_buffered:
                             if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + colored(next_url.geturl(), url_color))
+                                print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
                             else:
-                                print(colored(next_url.geturl(), url_color))
+                                print(url_colored_text + next_url.geturl())
                         continue
 
 
@@ -151,48 +191,16 @@ class LinkScraper:
 
             print(f"{self.statistics['n_https']} internal links are secure") 
             if self.statistics['n_http'] > 0:
-                print(colored(f"{self.statistics['n_http']} internal links are not secure", UrlColors.URL_INSECURE.value)) 
+                if self.no_color:
+                    print(f"{self.statistics['n_http']} internal links are not secure") 
+                else:
+                    print(colors.fg.orange + f"{self.statistics['n_http']} internal links are not secure") 
             else:
-                print(colored(f"No HTTP link was found", UrlColors.URL_SECURE.value)) 
+                if self.no_color:
+                    print(f"No HTTP link was found") 
+                else:
+                    print(colors.fg.lightgreen + f"No HTTP link was found")
 
-
-            c1 = np.array([self.statistics['n_https'], self.statistics['n_http']])
-            c1 = [value for value in c1 if value!=0]
-            c1_labels = []
-            if (self.statistics['n_https'] > 0):
-                c1_labels.append('https')
-            if (self.statistics['n_http'] > 0):
-                c1_labels.append('http')
-
-
-            c2 = np.array([self.statistics['n_internal_links'], self.statistics['n_external_links']])
-            c2 = [value for value in c2 if value!=0]
-            c2_labels = []
-            if (self.statistics['n_internal_links'] > 0):
-                c2_labels.append('internal links')
-            if (self.statistics['n_external_links'] > 0):
-                c2_labels.append('external links')
-
-            fig, axes = plt.subplots(1, 2)
-
-            p1 = axes[0].pie(c1, startangle=90, autopct='%1.1f%%')
-            axes[0].legend(loc='lower left')
-            axes[0].set_title('HTTP/HTTPS links')
-            axes[0].legend(loc='best', labels=c1_labels)
-
-            p2 = axes[1].pie(c2, startangle=90, autopct='%1.1f%%')
-            axes[1].legend(loc='lower right')
-            axes[1].set_title('Internal/external links')
-            axes[1].legend(loc='best', labels=c2_labels)
-
-            #draw circle
-            centre_circle = plt.Circle((0,0),0.70,fc='white')
-            fig = plt.gcf()
-            fig.gca().add_artist(centre_circle)
-
-            plt.tight_layout()
-            plt.title('Link statistics')
-            plt.show()
 
     def print_data(self, url, statistics=False):
 
@@ -202,7 +210,45 @@ class LinkScraper:
             print(self.tree_view) 
         elif self.format == 'grepable' and not self.line_buffered:
             for link in self.links:
-                print(link)
+                print(self.assoc_url_color(url) + link.geturl())
+        
+        c1 = np.array([self.statistics['n_https'], self.statistics['n_http']])
+        c1 = [value for value in c1 if value!=0]
+        c1_labels = []
+        if (self.statistics['n_https'] > 0):
+            c1_labels.append('https')
+        if (self.statistics['n_http'] > 0):
+            c1_labels.append('http')
+
+
+        c2 = np.array([self.statistics['n_internal_links'], self.statistics['n_external_links']])
+        c2 = [value for value in c2 if value!=0]
+        c2_labels = []
+        if (self.statistics['n_internal_links'] > 0):
+            c2_labels.append('internal links')
+        if (self.statistics['n_external_links'] > 0):
+            c2_labels.append('external links')
+
+        fig, axes = plt.subplots(1, 2)
+
+        p1 = axes[0].pie(c1, startangle=90, autopct='%1.1f%%')
+        axes[0].legend(loc='lower left')
+        axes[0].set_title('HTTP/HTTPS links')
+        axes[0].legend(loc='best', labels=c1_labels)
+
+        p2 = axes[1].pie(c2, startangle=90, autopct='%1.1f%%')
+        axes[1].legend(loc='lower right')
+        axes[1].set_title('Internal/external links')
+        axes[1].legend(loc='best', labels=c2_labels)
+
+        #draw circle
+        centre_circle = plt.Circle((0,0),0.70,fc='white')
+        fig = plt.gcf()
+        fig.gca().add_artist(centre_circle)
+
+        plt.tight_layout()
+        plt.title('Link statistics')
+        plt.show()
 
 
 if __name__ == "__main__":
@@ -213,6 +259,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--statistics', dest='statistics', action='store_true', default=False, help='Print also info about elapsed time and other details. Default "false"') 
     parser.add_argument('--line-buffered', dest='line_buffered', action='store_true', default=False, help='Show results as fast as possible. Not recommended to be used in pipe. Default "false"') 
     parser.add_argument('--limit', dest='N', action='store', type=int, default=0, help='Limit results to avoid excessive resource consumption') 
+    parser.add_argument('--no-color', dest='no_color', action='store_true', default=False, help='Disable colored output. Default "false"') 
     args = parser.parse_args()
 
     starting_url = args.url
@@ -220,6 +267,7 @@ if __name__ == "__main__":
     line_buffered = args.line_buffered
     statistics = args.statistics
     limit = args.N
+    no_color = args.no_color
 
-    link_scraper = LinkScraper(starting_url, format=format, line_buffered=line_buffered, limit=limit) 
+    link_scraper = LinkScraper(starting_url, format=format, line_buffered=line_buffered, limit=limit, no_color=no_color) 
     link_scraper.print_data(starting_url, statistics=statistics)
