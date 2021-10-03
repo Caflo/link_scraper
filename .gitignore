@@ -5,8 +5,8 @@
 !.vscode/extensions.json
 *.code-workspace
 build/*
-dist/link_scraper/
-__pycache__/*
+dist
+__pycache__/
 
 # Local History for Visual Studio Code
 .history/
