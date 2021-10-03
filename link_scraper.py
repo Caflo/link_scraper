@@ -201,7 +201,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Scrape links recursively given an URL")
     parser.add_argument('url', metavar='URL', type=str, help='Root url from where to start scraping') 
-    parser.add_argument('-v', '--verbosity', action='store', dest='N', nargs='?', default=0, help='Configures the verbosity. 0 to be quiet, 1 for a standard verbosity, 2 for a more detailed verbosity. Default 0') 
     parser.add_argument('-f', '--format', dest='format', choices=['treeview', 'grepable'], default='treeview', help='Choose how to print all the links (option grepable is useful is the script is used in pipe). Default "treeview"') 
     parser.add_argument('-s', '--statistics', dest='statistics', action='store_true', default=False, help='Print also info about elapsed time and other details. Default "false"') 
     parser.add_argument('--line-buffered', dest='line_buffered', action='store_true', default=False, help='Show results as fast as possible. Not recommended to be used in pipe. Default "false"') 
