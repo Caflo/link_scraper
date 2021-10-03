@@ -9,8 +9,10 @@ from urllib.parse import ParseResult, urljoin, urlparse
 from termcolor import colored
 from colorama import init
 from enum import Enum
+import matplotlib.pyplot as plt
+import numpy as np
 
-#TODO Add possibility to insert more than one domain, in case the site has multiple domains
+# TODO Add possibility to insert more than one domain, in case the site has multiple domains
 
 init()
 
@@ -145,6 +147,44 @@ class LinkScraper:
             else:
                 print(colored(f"No HTTP link was found", UrlColors.URL_SECURE.value)) 
 
+
+            c1 = np.array([self.statistics['n_https'], self.statistics['n_http']])
+            c1 = [value for value in c1 if value!=0]
+            c1_labels = []
+            if (self.statistics['n_https'] > 0):
+                c1_labels.append('https')
+            if (self.statistics['n_http'] > 0):
+                c1_labels.append('http')
+
+
+            c2 = np.array([self.statistics['n_internal_links'], self.statistics['n_external_links']])
+            c2 = [value for value in c2 if value!=0]
+            c2_labels = []
+            if (self.statistics['n_internal_links'] > 0):
+                c2_labels.append('internal links')
+            if (self.statistics['n_external_links'] > 0):
+                c2_labels.append('external links')
+
+            fig, axes = plt.subplots(1, 2)
+
+            p1 = axes[0].pie(c1, startangle=90, autopct='%1.1f%%')
+            axes[0].legend(loc='lower left')
+            axes[0].set_title('HTTP/HTTPS links')
+            axes[0].legend(loc='best', labels=c1_labels)
+
+            p2 = axes[1].pie(c2, startangle=90, autopct='%1.1f%%')
+            axes[1].legend(loc='lower right')
+            axes[1].set_title('Internal/external links')
+            axes[1].legend(loc='best', labels=c2_labels)
+
+            #draw circle
+            centre_circle = plt.Circle((0,0),0.70,fc='white')
+            fig = plt.gcf()
+            fig.gca().add_artist(centre_circle)
+
+            plt.tight_layout()
+            plt.title('Link statistics')
+            plt.show()
 
     def print_data(self, url, statistics=False):
 
