@@ -15,7 +15,7 @@ import numpy as np
 import re
 
 # TODO Add possibility to insert more than one domain, in case the site has multiple domains
-# TODO Add possibility to filter links by a keyword/regex 
+# TODO Add statistics to check broken links by looking at the response code
 
 init(autoreset=True)
 
@@ -78,6 +78,8 @@ class LinkScraper:
         self.regex = regex
         self.no_color = no_color
 
+        self.previous_url = "" # used as shared variable in recursion
+
 
     def assoc_url_color(self, url):
         if url.netloc == self.root_url.netloc:
@@ -135,15 +137,26 @@ class LinkScraper:
             if anchor.has_attr('href'):
                 next_url = anchor.attrs['href'] # extract url
                 next_url = urlparse(next_url)
+#                if not next_url.scheme: # if link has a relative local path, complete with the given scheme and domain name
+#                    # domain name is also needed because otherwise urlparse won't recognize it
+#                    next_url = ParseResult(scheme=self.root_url.scheme, netloc=self.root_url.netloc, path=next_url.path, \
+#                                                                            params=next_url.params, query=next_url.query, \
+#                                                                                                fragment=next_url.fragment)
+
+                if next_url.path.startswith("./"):
+                    parent = url[:url.rfind('/')]
+                    abs_path = parent + next_url.path[1:]
+                    next_url = urlparse(abs_path)
+                elif next_url.path.startswith("../"):
+                    indexes = [i for i in range(len(next_url.geturl())) if next_url.geturl().startswith("../", i)]
+                    next_url = urlparse(urljoin(url, next_url.path))
+
                 if not next_url.scheme: # if link has a relative local path, complete with the given scheme and domain name
                     # domain name is also needed because otherwise urlparse won't recognize it
                     next_url = ParseResult(scheme=self.root_url.scheme, netloc=self.root_url.netloc, path=next_url.path, \
                                                                             params=next_url.params, query=next_url.query, \
                                                                                                 fragment=next_url.fragment)
-                if next_url.path.startswith("./"):
-                    parent = url[:url.rfind('/')]
-                    abs_path = parent + next_url.path[1:]
-                    next_url = urlparse(abs_path)
+
 
                 if next_url in self.links: # skip duplicate links
                     continue
