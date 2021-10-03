@@ -12,6 +12,7 @@ from colorama import init
 from enum import Enum
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 
 # TODO Add possibility to insert more than one domain, in case the site has multiple domains
 # TODO Add possibility to filter links by a keyword/regex 
@@ -55,7 +56,7 @@ class colors:
 
 class LinkScraper:
 
-    def __init__(self, root_url, format='treeview', line_buffered=False, limit=0, no_color=False, interval=0) -> None:
+    def __init__(self, root_url, mode='treeview', line_buffered=False, limit=0, no_color=False, interval=0, regex=None) -> None:
 
         if not root_url.startswith("http"):
             raise ValueError("Wrong URL format. Must be starting with \"http[s]://\"")
@@ -69,11 +70,12 @@ class LinkScraper:
         self.statistics['n_https'] = 0
         self.statistics['n_http'] = 0
 
-        self.format = format
+        self.mode = mode
         self.line_buffered = line_buffered
         self.limit = limit
         self.iterations = 0
         self.interval = interval
+        self.regex = regex
         self.no_color = no_color
 
 
@@ -146,27 +148,28 @@ class LinkScraper:
                 if next_url in self.links: # skip duplicate links
                     continue
                 else:
-                    self.links.append(next_url) 
-                    self.iterations += 1
-                    url_colored_text = self.assoc_url_color(next_url)
-                    if next_url.netloc == self.root_url.netloc:
-                        self.statistics['n_internal_links'] += 1
-                        self.tree_view += "|\t" * indent_level + "" + url_colored_text + next_url.geturl() + "\n"
-                        if self.line_buffered:
-                            if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
-                            else:
-                                print(url_colored_text + next_url.geturl())
-                        self.analyze_anchors(next_url.geturl(), indent_level=indent_level+1)
-                    else: 
-                        self.statistics['n_external_links'] += 1
-                        self.tree_view += "|\t" * indent_level + "" + url_colored_text + next_url.geturl() + "\n"
-                        if self.line_buffered:
-                            if self.format == 'treeview':
-                                print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
-                            else:
-                                print(url_colored_text + next_url.geturl())
-                        continue
+                    if re.search(self.regex, next_url.geturl()): 
+                        self.links.append(next_url) 
+                        self.iterations += 1
+                        url_colored_text = self.assoc_url_color(next_url)
+                        if next_url.netloc == self.root_url.netloc:
+                            self.statistics['n_internal_links'] += 1
+                            self.tree_view += "|\t" * indent_level + "" + url_colored_text + next_url.geturl() + "\n"
+                            if self.line_buffered:
+                                if self.mode == 'treeview':
+                                    print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
+                                else:
+                                    print(url_colored_text + next_url.geturl())
+                            self.analyze_anchors(next_url.geturl(), indent_level=indent_level+1)
+                        else: 
+                            self.statistics['n_external_links'] += 1
+                            self.tree_view += "|\t" * indent_level + "" + url_colored_text + next_url.geturl() + "\n"
+                            if self.line_buffered:
+                                if self.mode == 'treeview':
+                                    print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
+                                else:
+                                    print(url_colored_text + next_url.geturl())
+                            continue
 
 
     def collect_link_statistics(self, url, statistics=False):
@@ -182,7 +185,7 @@ class LinkScraper:
         self.statistics['exec_time'] = timer_stop - timer_start
         total_links = self.statistics['n_internal_links'] + self.statistics['n_external_links']
         if total_links == 0:
-            print("No statistics was possible because no link was found. Exiting")
+            print("No result was found. Exiting")
             return
         
         if self.statistics['n_internal_links'] > 0 and self.statistics['n_external_links'] > 0:
@@ -212,11 +215,11 @@ class LinkScraper:
 
         self.collect_link_statistics(url, statistics=statistics)
 
-        if self.format == 'treeview' and not self.line_buffered:
+        if self.mode == 'treeview' and not self.line_buffered:
             print(self.tree_view) 
-        elif self.format == 'grepable' and not self.line_buffered:
+        elif self.mode == 'grepable' and not self.line_buffered:
             for link in self.links:
-                print(self.assoc_url_color(url) + link.geturl())
+                print(self.assoc_url_color(link) + link.geturl())
         
         c1 = np.array([self.statistics['n_https'], self.statistics['n_http']])
         c1 = [value for value in c1 if value!=0]
@@ -262,21 +265,25 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Scrape links recursively given an URL")
     parser.add_argument('url', metavar='URL', type=str, help='Root url from where to start scraping') 
-    parser.add_argument('-f', '--format', dest='format', choices=['treeview', 'grepable'], default='treeview', help='Choose how to print all the links (option grepable is useful is the script is used in pipe). Default "treeview"') 
+    parser.add_argument('-m', '--mode', dest='mode', choices=['treeview', 'grepable'], default='treeview', help='Choose how to print all the links (option grepable is useful is the script is used in pipe). Default "treeview"') 
     parser.add_argument('-s', '--statistics', dest='statistics', action='store_true', default=False, help='Print also info about elapsed time and other details. Default "false"') 
     parser.add_argument('--line-buffered', dest='line_buffered', action='store_true', default=False, help='Show results as fast as possible. Not recommended to be used in pipe. Default "false"') 
     parser.add_argument('--limit', dest='N', action='store', type=int, default=0, help='Limit results to avoid excessive resource consumption') 
+    parser.add_argument('-f', '--filter', dest='regex', action='store', type=str, default=None, help='Filter based on a given input pattern') 
     parser.add_argument('-i', '--interval', dest='interval', action='store', type=int, default=0, help='Configures interval for curl to avoid making requests too fast. Default 0') 
     parser.add_argument('--no-color', dest='no_color', action='store_true', default=False, help='Disable colored output. Default "false"') 
     args = parser.parse_args()
 
     starting_url = args.url
-    format = args.format
+    mode = args.mode
     line_buffered = args.line_buffered
     statistics = args.statistics
     limit = args.N
     interval = args.interval
+    regex = args.regex
     no_color = args.no_color
 
-    link_scraper = LinkScraper(starting_url, format=format, line_buffered=line_buffered, limit=limit, no_color=no_color, interval=interval) 
+    link_scraper = LinkScraper(starting_url, mode=mode, line_buffered=line_buffered, \
+                                        limit=limit, no_color=no_color, interval=interval, \
+                                        regex=regex) 
     link_scraper.print_data(starting_url, statistics=statistics)
