@@ -14,7 +14,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import re
 
-# TODO Add possibility to insert more than one domain, in case the site has multiple domains
+# TODO's
+# 1) Improve statistics: Create LinkObject with attributes and methods to store link information.
+#   Example:
+#       Class LinkInfo:
+#           self.link: ParseResult
+#           self.parent_link: ParseResult
+#           self.type: {internal, external, subdomain etc...}
+#           self.status: {ok, broken, forbidden, server error etc...}
+#   Results can be stored in a pandas optimized dataframe and then analyzed for statistics, also saved in a xlsx format.
+#   Treeview may be built using parent link.
+#
+# 2) Divide also time statistics between data statistics.
+# 
+# 
+# Note: http response code of external links is not analyzed, since the recursion (and so the link following) happens only if link is internal, in order to
+# not block the entire network and focus the search on the internal site. This may impact statistics, meaning that part of it is based only of internal links.
+
 
 init(autoreset=True)
 
@@ -170,28 +186,31 @@ class LinkScraper:
                 if next_url in self.links: # skip duplicate links
                     continue
                 else:
-                    if re.search(self.regex, next_url.geturl()): 
-                        self.links.append(next_url) 
-                        self.iterations += 1
-                        url_colored_text = self.assoc_url_color(next_url)
-                        if next_url.netloc == self.root_url.netloc:
-                            self.statistics['n_internal_links'] += 1
+                    self.links.append(next_url) 
+                    self.iterations += 1
+                    url_colored_text = self.assoc_url_color(next_url)
+                    if next_url.netloc == self.root_url.netloc:
+                        self.statistics['n_internal_links'] += 1
+                        if re.search(self.regex, next_url.geturl()): 
                             self.tree_view += "|\t" * indent_level + "" + url_colored_text + next_url.geturl() + "\n"
-                            if self.line_buffered:
-                                if self.mode == 'treeview':
-                                    print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
-                                else:
-                                    print(url_colored_text + next_url.geturl())
-                            self.analyze_anchors(next_url.geturl(), indent_level=indent_level+1)
-                        else: 
-                            self.statistics['n_external_links'] += 1
+                        if self.line_buffered:
+                                if re.search(self.regex, next_url.geturl()): 
+                                    if self.mode == 'treeview':
+                                        print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
+                                    else:
+                                        print(url_colored_text + next_url.geturl())
+                        self.analyze_anchors(next_url.geturl(), indent_level=indent_level+1)
+                    else: 
+                        self.statistics['n_external_links'] += 1
+                        if re.search(self.regex, next_url.geturl()): 
                             self.tree_view += "|\t" * indent_level + "" + url_colored_text + next_url.geturl() + "\n"
-                            if self.line_buffered:
-                                if self.mode == 'treeview':
-                                    print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
-                                else:
-                                    print(url_colored_text + next_url.geturl())
-                            continue
+                        if self.line_buffered:
+                                if re.search(self.regex, next_url.geturl()): 
+                                    if self.mode == 'treeview':
+                                        print("|\t" * indent_level + "" + url_colored_text + next_url.geturl())
+                                    else:
+                                        print(url_colored_text + next_url.geturl())
+                        continue
 
 
     def collect_link_statistics(self, url, statistics=False):
@@ -226,11 +245,6 @@ class LinkScraper:
                     print(f"{self.statistics['n_http']} internal links are not secured under HTTPS") 
                 else:
                     print(colors.fg.orange + f"{self.statistics['n_http']} internal links are not secured under HTTPS") 
-#            else:
-#                if self.no_color:
-#                    print(f"No HTTP link was found") 
-#                else:
-#                    print(colors.fg.lightgreen + f"No HTTP link was found")
 
 
     def print_data(self, url, statistics=False):
@@ -241,7 +255,8 @@ class LinkScraper:
             print(self.tree_view) 
         elif self.mode == 'grepable' and not self.line_buffered:
             for link in self.links:
-                print(self.assoc_url_color(link) + link.geturl())
+                if re.search(self.regex, link.geturl()): 
+                    print(self.assoc_url_color(link) + link.geturl())
         
 
         if statistics:

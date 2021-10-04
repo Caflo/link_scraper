@@ -9,7 +9,8 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "args": ["--mode", "grepable", "--line-buffered", "http://localhost/", "--filter", "https", "--statistics"]
+            "args": ["--mode", "grepable", "--line-buffered", "https://www.webscraper.io/"],
+//            "args": ["--mode", "grepable", "--line-buffered", "https://www.webscraper.io/", "--filter", "https://www.wbs-law.de/eng/practice-areas/internet-law/it-law/"],
 //            "args": ["--mode", "grepable", "--line-buffered", "http://books.toscrape.com/"],
             "console": "integratedTerminal"
         }
