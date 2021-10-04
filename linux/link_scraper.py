@@ -26,6 +26,8 @@ import re
 #   Treeview may be built using parent link.
 #
 # 2) Divide also time statistics between data statistics.
+# 3) Add max-depth option to limit recursion
+# 4) Add blacklist for links which have to not be included in the search
 # 
 # 
 # Note: http response code of external links is not analyzed, since the recursion (and so the link following) happens only if link is internal, in order to
