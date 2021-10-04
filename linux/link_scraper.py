@@ -21,7 +21,7 @@ import re
 #           self.link: ParseResult
 #           self.parent_link: ParseResult
 #           self.type: {internal, external, subdomain etc...}
-#           self.status: {ok, broken, forbidden, server error etc...}
+#           self.status: {ok, broken, forbidden, server error, client connection error etc...}
 #   Results can be stored in a pandas optimized dataframe and then analyzed for statistics, also saved in a xlsx format.
 #   Treeview may be built using parent link.
 #
